@@ -44,4 +44,4 @@ class order():
     def assign_shipper(self):
         shipper_list=[shipper(),shipper(),shipper(),shipper()]
         self.shipper_id=random.randint(1,4)
-        self.shipper_name=shipper_list[self.shipper_id-1]
+        self.shipper_name=shipper_list[self.shipper_id-1].name
