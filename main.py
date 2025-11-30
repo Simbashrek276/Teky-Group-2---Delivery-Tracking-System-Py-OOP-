@@ -25,4 +25,23 @@
 #- Shipper hoàn thành: tính doanh thu cộng đúng.
 #- Lưu / Load dữ liệu: dữ liệu phải đồng nhất sau load.
 
-print('hello world')
+import random
+class shipper():
+
+class orderState():
+    
+class order():
+    def __init__(self,order_id,distance,weight,base_rate,fee,created_at):
+        order_id=self.order_id
+        distance=self.distance
+        weight=self.weight
+        base_rate=self.base_rate
+        fee=self.fee
+        status=self.status
+        shipper_id=self.shipper_id
+        shipper_name=self.shipper_name
+        created_at=self.created_at
+    def assign_shipper(self):
+        shipper_list=[shipper(),shipper(),shipper(),shipper()]
+        self.shipper_id=random.randint(1,4)
+        self.shipper_name=shipper_list[self.shipper_id-1]
