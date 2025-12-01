@@ -26,6 +26,7 @@
 #- Lưu / Load dữ liệu: dữ liệu phải đồng nhất sau load.
 
 import random
+import json
 class shipper():
 
 class orderState():
@@ -45,3 +46,23 @@ class order():
         shipper_list=[shipper(),shipper(),shipper(),shipper()]
         self.shipper_id=random.randint(1,4)
         self.shipper_name=shipper_list[self.shipper_id-1].name
+    def export_invoice(self):
+        filename=f"Invoice number {self.order_id}.json"
+        invoice_data = {
+            "order_id": self.order_id,
+            "status": self.status,
+            "distance_km": self.distance,
+            "weight_kg": self.weight,
+            "base_rate": self.base_rate,
+            "fee": self.fee,
+            "shipper": {
+                "id": self.shipper_id,
+                "name": self.shipper_name
+            },
+            "created_at": (
+                self.created_at
+            )
+        }
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(invoice_data, f, ensure_ascii=False, indent=4)
+        return filename
