@@ -44,7 +44,7 @@ class Order():
 
         self.shipper = None #cái này lưu nguyên cả cái object shipper cho tí gọi cho dễ như kiểu là "shipper.asign_order() cho tiện"
         self.shipper_id = None
-        self.shipper_name = None #cái này lưu tên mấy chú ship dạng string nhé nên khác nhau
+        self.shipper_name = None #cai này lưu tên mấy chú ship dạng string nhé nên khác nhau (nên minh châu phân biệt lưu ý với self.shipper ở trên nhem)
 
         self.state = NewState()
 
@@ -216,7 +216,7 @@ class DeliveryService:
             order.shipper_name = odata["shipper_name"]
             self.orders[int(oid)] = order
 
-#menu của mình nhé ae
+#menu của mình nhé ae :))
 def main():
     service = DeliveryService()
 
