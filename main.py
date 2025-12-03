@@ -32,7 +32,7 @@ class Shipper():
     pass
 
 class Order():
-    def __init__(self,order_id,distance,weight,base_rate,created_at):
+    def __init__(self, order_id, distance, weight, base_rate=5):
         self.order_id = order_id
         self.distance = distance
         self.weight = weight
@@ -40,11 +40,13 @@ class Order():
         self.created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         self.fee = 0
-
         self.status = "NEW"
 
+        self.shipper = None #cái này lưu nguyên cả cái object shipper cho tí gọi cho dễ như kiểu là "shipper.asign_order() cho tiện"
         self.shipper_id = None
-        self.shipper_name = None
+        self.shipper_name = None #cái này lưu tên mấy chú ship dạng string nhé nên khác nhau
+
+        self.state = NewState()
 
     def set_fee(self,fee):
         self.fee=fee
@@ -55,34 +57,26 @@ class Order():
         self.shipper_name = shipper_name
         self.status = "ASSIGNED"
 
-    def assign_shipper(self):
-        shipper_list=[shipper(),shipper(),shipper(),shipper()]
-        self.shipper_id=random.randint(1,4)
-        self.shipper_name=shipper_list[self.shipper_id-1].name
-
-    def export_invoice(self):
-        filename = f"Invoice_{self.order_id}.json"
-
-        invoice_data = {
-            "order_id": self.order_id,
-            "status": self.status,
-            "distance_km": self.distance,
-            "weight_kg": self.weight,
-            "base_rate": self.base_rate,
-            "fee": self.fee,
-            "shipper": {
-                "id": self.shipper_id,
-                "name": self.shipper_name
-            },
-            "created_at": self.created_at
-        }
-
+    def export_invoice_txt(self): #nchung la cais nay export hoa don ra txt cho dễ đọc
+        filename = f"Invoice_{self.order_id}.txt"
         with open(filename, "w", encoding="utf-8") as f:
-            json.dump(invoice_data, f, ensure_ascii=False, indent=4)
-
+            f.write("===== DELIVERY INVOICE =====\n")
+            f.write(f"Order ID      : {self.order_id}\n")
+            f.write(f"Status        : {self.status}\n")
+            f.write(f"Created At    : {self.created_at}\n")
+            f.write("\n--- SHIPPING INFO ---\n")
+            f.write(f"Distance (km) : {self.distance}\n")
+            f.write(f"Weight (kg)   : {self.weight}\n")
+            f.write(f"Base Rate     : {self.base_rate}\n")
+            f.write(f"Fee (VND)     : {self.fee}\n")
+            f.write("\n--- SHIPPER ---\n")
+            f.write(f"Shipper ID    : {self.shipper_id}\n")
+            f.write(f"Shipper Name  : {self.shipper_name}\n")
+            f.write("\n============================\n")
         return filename
     
-    def to_dict(self): #cái này để phục vụ cho thằng save của delivery service bên dưới của tớ nhé
+    def to_dict(self): 
+        #cái này để phục vụ cho thằng save của delivery service bên dưới của tớ nhé
         return {
             "order_id": self.order_id,
             "distance": self.distance,
@@ -92,9 +86,19 @@ class Order():
             "fee": self.fee,
             "status": self.status,
             "shipper_id": self.shipper_id,
-            "shipper_name": self.shipper_name
+            "shipper_name": self.shipper_name,
+            "type": self.__class__.__name__,
+            "state": self.state.state_name()
         }
     
+class NormalOrder(Order):
+    def calculate_fee(self):
+        self.fee = self.base_rate * self.distance + self.weight * 2
+
+class ExpressOrder(Order):
+    def calculate_fee(self):
+        self.fee = (self.base_rate * self.distance + self.weight * 2) * 1.5
+
 class OrderState(): #cái này để print ra trạng thái hiện tại của đơn hàng nhé ae
     def state_name(self):
         return self.__class__.__name__
@@ -140,7 +144,7 @@ class CompletedState(OrderState):
 class CancelledState(OrderState):
     pass
 
-class DeliveryService():
+class DeliveryService:
     def __init__(self):
         self.orders = {}
         self.shippers = {}
@@ -151,6 +155,7 @@ class DeliveryService():
         shipper = Shipper(self.shipper_counter, name)
         self.shippers[self.shipper_counter] = shipper
         self.shipper_counter += 1
+        return shipper
 
     def create_order(self, type_name, distance, weight):
         oid = self.order_counter
@@ -158,30 +163,120 @@ class DeliveryService():
             order = NormalOrder(oid, distance, weight)
         else:
             order = ExpressOrder(oid, distance, weight)
+
+        order.calculate_fee()
         self.orders[oid] = order
         self.order_counter += 1
         return order
 
     def assign_shipper(self, order_id, shipper_id):
-        self.shippers[shipper_id].assign_order(self.orders[order_id])
+        shipper = self.shippers[shipper_id]
+        shipper.assign_order(self.orders[order_id])
+        shipper.current_order = self.orders[order_id]
 
-    def complete_order(self, order_id):
-        shipper = self.orders[order_id].shipper
-        shipper.finish_order()
+    def complete_order(self, order_id, rating=None):
+        order = self.orders[order_id]
+        order.shipper.finish_order()
 
-    def save(self, filename):
+        if rating:
+            order.shipper.add_rating(rating)
+
+    #tớ lưu du liệu ra file json để load
+    #chắc tớ nghĩ json cần thiết (cái này thầy Huy bảo trọ giúp AI một phần ok nhé nên ở đây tớ làm json)
+    def save_json(self, filename="data.json"):
         data = {
-            "orders": {oid: o.to_dict() for oid, o in self.orders.items()},
-            "shippers": {
-                sid: {
-                    "id": s.shipper_id,
-                    "name": s.name,
-                    "total_revenue": s.total_revenue,
-                    "completed_orders": s.completed_orders,
-                    "ratings": s.ratings,
-                }
-                for sid, s in self.shippers.items()
-            }
+            "shippers": {sid: s.to_dict() for sid, s in self.shippers.items()},
+            "orders": {oid: o.to_dict() for oid, o in self.orders.items()}
         }
         with open(filename, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
+            json.dump(data, f, indent=4, ensure_ascii=False)
+
+    def load_json(self, filename="data.json"):
+        with open(filename, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        self.shippers = {}
+        for sid, sdata in data["shippers"].items():
+            shipper = Shipper(int(sdata["shipper_id"]), sdata["name"])
+            shipper.total_revenue = sdata["total_revenue"]
+            shipper.completed_orders = sdata["completed_orders"]
+            shipper.ratings = sdata["ratings"]
+            self.shippers[int(sid)] = shipper
+
+        self.orders = {}
+        for oid, odata in data["orders"].items():
+            if odata["type"] == "NormalOrder":
+                order = NormalOrder(int(odata["order_id"]), odata["distance"], odata["weight"], odata["base_rate"])
+            else:
+                order = ExpressOrder(int(odata["order_id"]), odata["distance"], odata["weight"], odata["base_rate"])
+
+            order.fee = odata["fee"]
+            order.status = odata["status"]
+            order.shipper_id = odata["shipper_id"]
+            order.shipper_name = odata["shipper_name"]
+            self.orders[int(oid)] = order
+
+#menu của mình nhé ae
+def main():
+    service = DeliveryService()
+
+    while True:
+        print("\n===== DELIVERY SYSTEM MENU =====")
+        print("1. Thêm shipper")
+        print("2. Tạo order")
+        print("3. Gán shipper cho order")
+        print("4. Hoàn thành order")
+        print("5. Xuất hóa đơn order")
+        print("6. Lưu dữ liệu ra JSON")
+        print("7. Load dữ liệu từ JSON")
+        print("0. Thoát")
+        choice = input("Chọn chức năng: ")
+
+        if choice == "1":
+            name = input("Tên shipper: ")
+            shipper = service.add_shipper(name)
+            print(f"Đã thêm shipper {shipper.name} với ID {shipper.shipper_id}")
+
+        elif choice == "2":
+            type_name = input("Loại order (normal/express): ")
+            distance = float(input("Khoảng cách (km): "))
+            weight = float(input("Khối lượng (kg): "))
+            order = service.create_order(type_name, distance, weight)
+            print(f"Đã tạo order {order.order_id} với phí {order.fee}")
+
+        elif choice == "3":
+            order_id = int(input("ID order: "))
+            shipper_id = int(input("ID shipper: "))
+            service.assign_shipper(order_id, shipper_id)
+            print(f"Đã gán shipper {shipper_id} cho order {order_id}")
+
+        elif choice == "4":
+            order_id = int(input("ID order: "))
+            rating_input = input("Đánh giá shipper (1-5, bỏ trống nếu không có): ")
+            rating = int(rating_input) if rating_input else None
+            service.complete_order(order_id, rating)
+            print(f"Order {order_id} đã hoàn thành")
+
+        elif choice == "5":
+            order_id = int(input("ID order: "))
+            order = service.orders[order_id]
+            filename = order.export_invoice_txt()
+            print(f"Đã xuất hóa đơn ra {filename}")
+
+        elif choice == "6":
+            service.save_json()
+            print("Đã lưu dữ liệu ra data.json")
+
+        elif choice == "7":
+            service.load_json()
+            print("Đã load dữ liệu từ data.json")
+
+        elif choice == "0":
+            print("Thoát chương trình.")
+            break
+
+        else:
+            print("Chức năng không hợp lệ, vui lòng chọn lại.")
+
+if __name__ == "__main__":
+    main()
