@@ -95,14 +95,14 @@ class Order():
             "shipper_id": self.shipper_id,
             "shipper_name": self.shipper_name
         }
-class normalorder(Order):
+class NormalOrder(Order):
     def __init__(self,order_id,distance,weight,created_at):
         super().__init__(order_id,distance,weight,created_at)
         self.base_rate=5000
     def set_fee(self,fee):
         fee = self.base_rate*self.distance + self.weight*3000
         self.fee=fee
-class expressorder(Order):
+class ExpressOrder(Order):
     def __init__(self,order_id,distance,weight,created_at):
         super().__init__(order_id,distance,weight,created_at)
         self.base_rate=10000
