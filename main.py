@@ -82,6 +82,7 @@ class Order():
 
         return filename
     
+    
     def to_dict(self): #cái này để phục vụ cho thằng save của delivery service bên dưới của tớ nhé
         return {
             "order_id": self.order_id,
@@ -94,7 +95,20 @@ class Order():
             "shipper_id": self.shipper_id,
             "shipper_name": self.shipper_name
         }
-    
+class normalorder(Order):
+    def __init__(self,order_id,distance,weight,created_at):
+        super().__init__(order_id,distance,weight,created_at)
+        self.base_rate=5000
+    def set_fee(self,fee):
+        fee = self.base_rate*self.distance + self.weight*3000
+        self.fee=fee
+class expressorder(Order):
+    def __init__(self,order_id,distance,weight,created_at):
+        super().__init__(order_id,distance,weight,created_at)
+        self.base_rate=10000
+    def set_fee(self,fee):
+        fee = self.base_rate*self.distance + self.weight*3000
+        self.fee=fee
 class OrderState(): #cái này để print ra trạng thái hiện tại của đơn hàng nhé ae
     def state_name(self):
         return self.__class__.__name__
