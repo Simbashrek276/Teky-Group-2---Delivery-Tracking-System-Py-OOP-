@@ -24,12 +24,45 @@
 #- Shipper hoàn thành: tính doanh thu cộng đúng.
 #- Lưu / Load dữ liệu: dữ liệu phải đồng nhất sau load.
 
+import os
 import random
 import json
 from datetime import datetime
 
-class Shipper():
-    pass
+class Shipper:
+    def __init__(self, shipper_id, name):
+        self.shipper_id = shipper_id
+        self.name = name
+        self.total_revenue = 0
+        self.completed_orders = 0
+        self.ratings = []
+        self.current_order = None
+
+    def assign_order(self, order):
+        self.current_order = order
+        order.shipper = self   
+        order.set_shipper(self.shipper_id, self.name)
+        order.state = AssignedState()
+
+    def finish_order(self):
+        if self.current_order:
+            self.total_revenue += self.current_order.fee
+            self.completed_orders += 1
+            self.current_order.state = CompletedState()
+            self.current_order.status = "COMPLETED"
+            self.current_order = None
+
+    def add_rating(self, rating):
+        self.ratings.append(rating)
+
+    def to_dict(self):
+        return {
+            "shipper_id": self.shipper_id,
+            "name": self.name,
+            "total_revenue": self.total_revenue,
+            "completed_orders": self.completed_orders,
+            "ratings": self.ratings
+        }
 
 class Order():
     def __init__(self, order_id, distance, weight, base_rate=5):
@@ -192,6 +225,10 @@ class DeliveryService:
             json.dump(data, f, indent=4, ensure_ascii=False)
 
     def load_json(self, filename="data.json"):
+        if not os.path.exists(filename):
+            print("⚠ File data.json chưa tồn tại! Hãy dùng chức năng 6 (Lưu dữ liệu) trước.")
+            return
+
         with open(filename, "r", encoding="utf-8") as f:
             data = json.load(f)
 
@@ -242,13 +279,13 @@ def main():
             distance = float(input("Khoảng cách (km): "))
             weight = float(input("Khối lượng (kg): "))
             order = service.create_order(type_name, distance, weight)
-            print(f"Đã tạo order {order.order_id} với phí {order.fee}")
+            print(f"Đã tạo order với ID {order.order_id} với phí {order.fee}")
 
         elif choice == "3":
             order_id = int(input("ID order: "))
             shipper_id = int(input("ID shipper: "))
             service.assign_shipper(order_id, shipper_id)
-            print(f"Đã gán shipper {shipper_id} cho order {order_id}")
+            print(f"Đã gán shipper {shipper_id} cho order ID {order_id}")
 
         elif choice == "4":
             order_id = int(input("ID order: "))
@@ -259,9 +296,11 @@ def main():
 
         elif choice == "5":
             order_id = int(input("ID order: "))
-            order = service.orders[order_id]
-            filename = order.export_invoice_txt()
-            print(f"Đã xuất hóa đơn ra {filename}")
+            if order_id not in service.orders:
+                print("Order không tồn tại. Check again bro")
+            else:
+                filename = service.orders[order_id].export_invoice_txt()
+                print(f"Đã xuất hóa đơn: {filename}")
 
         elif choice == "6":
             service.save_json()

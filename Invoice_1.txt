@@ -1,0 +1,16 @@
+===== DELIVERY INVOICE =====
+Order ID      : 1
+Status        : COMPLETED
+Created At    : 2025-12-05 17:36:18
+
+--- SHIPPING INFO ---
+Distance (km) : 10.0
+Weight (kg)   : 5.0
+Base Rate     : 5
+Fee (VND)     : 90.0
+
+--- SHIPPER ---
+Shipper ID    : 2
+Shipper Name  : Hà Văn Ưng
+
+============================
