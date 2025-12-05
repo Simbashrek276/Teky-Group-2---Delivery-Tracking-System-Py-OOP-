@@ -52,6 +52,16 @@ class Shipper:
             self.current_order.status = "COMPLETED"
             self.current_order = None
 
+    def complete_order(self, order_id, rating=None):
+        order = self.orders[order_id]
+
+        if order.status == "COMPLETED":
+            print(f"Order {order_id} đã hoàn thành trước đó rồi, ko hoàn thành lại đc nữa")
+            return
+        order.shipper.finish_order()
+        if rating:
+            order.shipper.add_rating(rating)
+
     def add_rating(self, rating):
         self.ratings.append(rating)
 
@@ -93,7 +103,7 @@ class Order():
     def export_invoice_txt(self): #nchung la cais nay export hoa don ra txt cho dễ đọc
         filename = f"Invoice_{self.order_id}.txt"
         with open(filename, "w", encoding="utf-8") as f:
-            f.write("===== DELIVERY INVOICE =====\n")
+            f.write("===== DELIVERY INVOICE (hóa đơn) =====\n")
             f.write(f"Order ID      : {self.order_id}\n")
             f.write(f"Status        : {self.status}\n")
             f.write(f"Created At    : {self.created_at}\n")
@@ -105,7 +115,7 @@ class Order():
             f.write("\n--- SHIPPER ---\n")
             f.write(f"Shipper ID    : {self.shipper_id}\n")
             f.write(f"Shipper Name  : {self.shipper_name}\n")
-            f.write("\n============================\n")
+            f.write("\n====================================\n")
         return filename
     
     def to_dict(self): 
@@ -226,7 +236,7 @@ class DeliveryService:
 
     def load_json(self, filename="data.json"):
         if not os.path.exists(filename):
-            print("⚠ File data.json chưa tồn tại! Hãy dùng chức năng 6 (Lưu dữ liệu) trước.")
+            print("File data.json chưa tồn tại! Hãy dùng chức năng 6 (Lưu dữ liệu) trước.")
             return
 
         with open(filename, "r", encoding="utf-8") as f:
@@ -279,7 +289,7 @@ def main():
             distance = float(input("Khoảng cách (km): "))
             weight = float(input("Khối lượng (kg): "))
             order = service.create_order(type_name, distance, weight)
-            print(f"Đã tạo order với ID {order.order_id} với phí {order.fee}")
+            print(f"Đã tạo order với ID {order.order_id} với phí {order.fee}K VND")
 
         elif choice == "3":
             order_id = int(input("ID order: "))
