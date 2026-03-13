@@ -411,7 +411,7 @@ def main():
             break
 
         else:
-            print("Chức năng không hợp lệ, vui lòng chọn lại")
+            print("Chức năng không hợp lệ, ")
 
 if __name__ == "__main__":
     main()
