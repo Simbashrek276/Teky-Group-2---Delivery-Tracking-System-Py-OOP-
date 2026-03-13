@@ -1,0 +1,28 @@
+{
+    "shippers": {
+        "1": {
+            "shipper_id": 1,
+            "name": "Lê Huy Hoàng",
+            "total_revenue": 37.5,
+            "completed_orders": 1,
+            "ratings": [
+                5
+            ]
+        }
+    },
+    "orders": {
+        "1": {
+            "order_id": 1,
+            "distance": 3.0,
+            "weight": 5.0,
+            "base_rate": 5,
+            "created_at": "2025-12-05 18:57:58",
+            "fee": 37.5,
+            "status": "COMPLETED",
+            "shipper_id": 1,
+            "shipper_name": "Lê Huy Hoàng",
+            "type": "ExpressOrder",
+            "state": "CompletedState"
+        }
+    }
+}

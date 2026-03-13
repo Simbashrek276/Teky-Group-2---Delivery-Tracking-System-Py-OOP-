@@ -52,16 +52,6 @@ class Shipper:
             self.current_order.status = "COMPLETED"
             self.current_order = None
 
-    def complete_order(self, order_id, rating=None):
-        order = self.orders[order_id]
-
-        if order.status == "COMPLETED":
-            print(f"Order {order_id} đã hoàn thành trước đó rồi, ko hoàn thành lại đc nữa")
-            return
-        order.shipper.finish_order()
-        if rating:
-            order.shipper.add_rating(rating)
-
     def add_rating(self, rating):
         self.ratings.append(rating)
 
@@ -213,19 +203,47 @@ class DeliveryService:
         return order
 
     def assign_shipper(self, order_id, shipper_id):
+        if order_id not in self.orders:
+            print("Order không tồn tại.")
+            return
+        if shipper_id not in self.shippers:
+            print("Shipper không tồn tại.")
+            return
+
+        order = self.orders[order_id]
         shipper = self.shippers[shipper_id]
-        shipper.assign_order(self.orders[order_id])
-        shipper.current_order = self.orders[order_id]
+
+        if order.status == "COMPLETED" or order.status == "CANCELLED":
+            print("Không thể gán shipper cho order đã hoàn thành hoặc đã hủy.")
+            return
+        if shipper.current_order is not None:
+            print("Shipper hiện đang có đơn khác, không thể gán.")
+            return
+
+        shipper.assign_order(order)
+        shipper.current_order = order
 
     def complete_order(self, order_id, rating=None):
+        if order_id not in self.orders:
+            print("Order không tồn tại.")
+            return
         order = self.orders[order_id]
+        if order.status == "COMPLETED":
+            print(f"Order {order_id} đã hoàn thành trước đó rồi, không thể hoàn thành lại.")
+            return
+        if order.shipper is None:
+            print("Order chưa được gán shipper, không thể hoàn thành.")
+            return
+        if order.shipper.current_order is None:
+            # shipper không còn current_order (có thể đã được hoàn thành trước) nên là kiểu ye
+            print("Shipper không đang giao order này, kiểm tra lại trạng thái.")
+            return
+
         order.shipper.finish_order()
 
         if rating:
             order.shipper.add_rating(rating)
 
-    #tớ lưu du liệu ra file json để load
-    #chắc tớ nghĩ json cần thiết (cái này thầy Huy bảo trọ giúp AI một phần ok nhé nên ở đây tớ làm json)
     def save_json(self, filename="data.json"):
         data = {
             "shippers": {sid: s.to_dict() for sid, s in self.shippers.items()},
@@ -245,9 +263,9 @@ class DeliveryService:
         self.shippers = {}
         for sid, sdata in data["shippers"].items():
             shipper = Shipper(int(sdata["shipper_id"]), sdata["name"])
-            shipper.total_revenue = sdata["total_revenue"]
-            shipper.completed_orders = sdata["completed_orders"]
-            shipper.ratings = sdata["ratings"]
+            shipper.total_revenue = sdata.get("total_revenue", 0)
+            shipper.completed_orders = sdata.get("completed_orders", 0)
+            shipper.ratings = sdata.get("ratings", [])
             self.shippers[int(sid)] = shipper
 
         self.orders = {}
@@ -257,11 +275,45 @@ class DeliveryService:
             else:
                 order = ExpressOrder(int(odata["order_id"]), odata["distance"], odata["weight"], odata["base_rate"])
 
-            order.fee = odata["fee"]
-            order.status = odata["status"]
-            order.shipper_id = odata["shipper_id"]
-            order.shipper_name = odata["shipper_name"]
+            order.fee = odata.get("fee", 0)
+            order.status = odata.get("status", "NEW")
+            order.shipper_id = odata.get("shipper_id")
+            order.shipper_name = odata.get("shipper_name")
+            state_name = odata.get("state", "NewState")
+            if state_name == "NewState":
+                order.state = NewState()
+            elif state_name == "AssignedState":
+                order.state = AssignedState()
+            elif state_name == "ShippingState":
+                order.state = ShippingState()
+            elif state_name == "CompletedState":
+                order.state = CompletedState()
+
+            elif state_name == "CancelledState":
+                order.state = CancelledState()
+            else:
+                order.state = NewState()
+
             self.orders[int(oid)] = order
+
+        for oid, order in list(self.orders.items()):
+            if order.shipper_id is not None:
+                sid = int(order.shipper_id)
+                if sid in self.shippers:
+                    order.shipper = self.shippers[sid]
+                    # nếu đơn đang ở trạng thái ASSIGNED hoặc SHIPPING, thì ae cập nhật current_order của shipper ye
+                    if order.status in ("ASSIGNED", "SHIPPING"):
+                        self.shippers[sid].current_order = order
+
+        #cái counter của mình để tránh trùng ID (kiểu id order bị trùng ấy)
+        if self.orders:
+            self.order_counter = max(self.orders.keys()) + 1
+        else:
+            self.order_counter = 1
+        if self.shippers:
+            self.shipper_counter = max(self.shippers.keys()) + 1
+        else:
+            self.shipper_counter = 1
 
 #menu của mình nhé ae :))
 def main():
@@ -276,6 +328,8 @@ def main():
         print("5. Xuất hóa đơn order")
         print("6. Lưu dữ liệu ra JSON")
         print("7. Load dữ liệu từ JSON")
+        print("8. Hiển thị danh sách orders")
+        print("9. Hiển thị danh sách shippers")
         print("0. Thoát")
         choice = input("Chọn chức năng: ")
 
@@ -292,20 +346,33 @@ def main():
             print(f"Đã tạo order với ID {order.order_id} với phí {order.fee}K VND")
 
         elif choice == "3":
-            order_id = int(input("ID order: "))
-            shipper_id = int(input("ID shipper: "))
+            try:
+                order_id = int(input("ID order: "))
+                shipper_id = int(input("ID shipper: "))
+            except ValueError:
+                print("ID phải là số nguyên.")
+                continue
             service.assign_shipper(order_id, shipper_id)
             print(f"Đã gán shipper {shipper_id} cho order ID {order_id}")
 
         elif choice == "4":
-            order_id = int(input("ID order: "))
+            try:
+                order_id = int(input("ID order: "))
+            except ValueError:
+                print("ID phải là số nguyên.")
+                continue
             rating_input = input("Đánh giá shipper (1-5, bỏ trống nếu không có): ")
             rating = int(rating_input) if rating_input else None
             service.complete_order(order_id, rating)
-            print(f"Order {order_id} đã hoàn thành")
+            if order_id in service.orders and service.orders[order_id].status == "COMPLETED":
+                print(f"Order {order_id} đã hoàn thành")
 
         elif choice == "5":
-            order_id = int(input("ID order: "))
+            try:
+                order_id = int(input("ID order: "))
+            except ValueError:
+                print("ID phải là số nguyên.")
+                continue
             if order_id not in service.orders:
                 print("Order không tồn tại. Check again bro")
             else:
@@ -320,12 +387,31 @@ def main():
             service.load_json()
             print("Đã load dữ liệu từ data.json")
 
+        elif choice == "8":
+            if not service.orders:
+                print("Chưa có order nào.")
+            else:
+                print("Danh sách orders:")
+                for oid in sorted(service.orders.keys()):
+                    o = service.orders[oid]
+                    print(f"- ID {o.order_id} | Type: {o.__class__.__name__} | Status: {o.status} | Fee: {o.fee} | Shipper ID: {o.shipper_id} | Shipper Name: {o.shipper_name}")
+
+        elif choice == "9":
+            if not service.shippers:
+                print("Chưa có shipper nào.")
+            else:
+                print("Danh sách shippers:")
+                for sid in sorted(service.shippers.keys()):
+                    s = service.shippers[sid]
+                    avg_rating = round(sum(s.ratings)/len(s.ratings), 2) if s.ratings else "N/A"
+                    print(f"- ID {s.shipper_id} | Name: {s.name} | Revenue: {s.total_revenue} | Completed: {s.completed_orders} | Đánh giá trung bình: {avg_rating}")
+
         elif choice == "0":
             print("Thoát chương trình.")
             break
 
         else:
-            print("Chức năng không hợp lệ, vui lòng chọn lại.")
+            print("Chức năng không hợp lệ, vui lòng chọn lại")
 
 if __name__ == "__main__":
     main()
