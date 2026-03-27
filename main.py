@@ -354,11 +354,15 @@ class DeliveryApp:
         main_frame = tk.Frame(root)
         main_frame.pack(fill="both", expand=True)
 
+        top_main = tk.Frame(main_frame, height=30, bg="white")
+        top_main.pack(side="top", fill="x")
+
         left_main = tk.Frame(main_frame, bg="#ecf0f1")
         left_main.pack(side="left", fill="both", expand=True, padx=(10,5), pady=10)
 
         right_main = tk.Frame(main_frame)
         right_main.pack(side="left", fill="both", expand=True, padx=(5,10), pady=10)
+
 
         #khung chính (dashboard)
 
