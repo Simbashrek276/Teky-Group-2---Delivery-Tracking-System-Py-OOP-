@@ -316,102 +316,256 @@ class DeliveryService:
             self.shipper_counter = 1
 
 #menu của mình nhé ae :))
-def main():
-    service = DeliveryService()
+import tkinter as tk
+from tkinter import messagebox, simpledialog
 
-    while True:
-        print("\n===== DELIVERY SYSTEM MENU =====")
-        print("1. Thêm shipper")
-        print("2. Tạo order")
-        print("3. Gán shipper cho order")
-        print("4. Hoàn thành order")
-        print("5. Xuất hóa đơn order")
-        print("6. Lưu dữ liệu ra JSON")
-        print("7. Load dữ liệu từ JSON")
-        print("8. Hiển thị danh sách orders")
-        print("9. Hiển thị danh sách shippers")
-        print("0. Thoát")
-        choice = input("Chọn chức năng: ")
+class DeliveryApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Delivery Tracking System")
+        self.root.geometry("1200x700")
 
-        if choice == "1":
-            name = input("Tên shipper: ")
-            shipper = service.add_shipper(name)
-            print(f"Đã thêm shipper {shipper.name} với ID {shipper.shipper_id}")
+        self.service = DeliveryService()
 
-        elif choice == "2":
-            type_name = input("Loại order (normal/express): ")
-            distance = float(input("Khoảng cách (km): "))
-            weight = float(input("Khối lượng (kg): "))
-            order = service.create_order(type_name, distance, weight)
-            print(f"Đã tạo order với ID {order.order_id} với phí {order.fee}K VND")
+        #menu trái đây (tớ đang để màu xanh dương)
+        left_frame = tk.Frame(root, width=180, bg="#2c3e50")
+        left_frame.pack(side="left", fill="y")
 
-        elif choice == "3":
+        def big_btn(text, cmd):
+            return tk.Button(
+                left_frame,
+                text=text,
+                command=cmd,
+                height=2,
+                font=("Arial", 11, "bold"),
+                bg="#34495e",
+                fg="white"
+            )
+
+        big_btn("Add Shipper", self.add_shipper).pack(fill="x", pady=5)
+        big_btn("Create Order", self.create_order).pack(fill="x", pady=5)
+        big_btn("Assign", self.assign_shipper).pack(fill="x", pady=5)
+        big_btn("Complete", self.complete_order).pack(fill="x", pady=5)
+        big_btn("Export", self.export_invoice).pack(fill="x", pady=5)
+        big_btn("Save", self.save).pack(fill="x", pady=5)
+        big_btn("Load", self.load).pack(fill="x", pady=5)
+
+        #cả phần khung chính (phần diện tích bên phải của thanh menu bên trái ấy)
+        main_frame = tk.Frame(root)
+        main_frame.pack(fill="both", expand=True)
+
+        left_main = tk.Frame(main_frame, bg="#ecf0f1")
+        left_main.pack(side="left", fill="both", expand=True, padx=(10,5), pady=10)
+
+        right_main = tk.Frame(main_frame)
+        right_main.pack(side="left", fill="both", expand=True, padx=(5,10), pady=10)
+
+        #khung chính (dashboard)
+
+        self.rank_box = tk.LabelFrame(left_main, text="Top Shippers")
+        self.rank_box.pack(fill="x", pady=5)
+
+        self.rank_label = tk.Label(self.rank_box, justify="left")
+        self.rank_label.pack()
+
+        stats_frame = tk.Frame(left_main)
+        stats_frame.pack(fill="x")
+
+        self.total_orders_box = tk.LabelFrame(stats_frame, text="Total Orders")
+        self.total_orders_box.pack(side="left", expand=True, fill="both", padx=5)
+
+        self.total_km_box = tk.LabelFrame(stats_frame, text="Total Distance")
+        self.total_km_box.pack(side="left", expand=True, fill="both", padx=5)
+
+        self.feedback_box = tk.LabelFrame(left_main, text="Ratings")
+        self.feedback_box.pack(fill="both", expand=True, pady=5)
+
+        self.feedback_label = tk.Label(self.feedback_box, justify="left")
+        self.feedback_label.pack()
+
+        # phần khung bên phải sẽ ntn
+
+        # phần khung của ông chú shipper :))
+        shipper_panel = tk.LabelFrame(right_main, text="Shipper")
+        shipper_panel.pack(fill="both", expand=True, pady=10)
+
+        self.shipper_list = tk.Listbox(shipper_panel, font=("Arial", 11))
+        self.shipper_list.pack(fill="both", expand=True, padx=5, pady=5)
+
+        tk.Button(shipper_panel, text="+ Add", command=self.add_shipper).pack(fill="x")
+        tk.Button(shipper_panel, text="Assign", command=self.assign_shipper).pack(fill="x")
+
+        # ORDER PANEL
+        order_panel = tk.LabelFrame(right_main, text="Order")
+        order_panel.pack(fill="both", expand=True, pady=10)
+
+        self.order_list = tk.Listbox(order_panel, font=("Arial", 11))
+        self.order_list.pack(fill="both", expand=True, padx=5, pady=5)
+
+        tk.Button(order_panel, text="+ Create", command=self.create_order).pack(fill="x")
+        tk.Button(order_panel, text="Complete", command=self.complete_order).pack(fill="x")
+        tk.Button(order_panel, text="Export", command=self.export_invoice).pack(fill="x")
+
+        self.refresh()
+
+    #đây sẽ là các hàm của nhóm mình 
+    def refresh(self):
+        self.order_list.delete(0, tk.END)
+        self.shipper_list.delete(0, tk.END)
+
+        for o in self.service.orders.values():
+            self.order_list.insert(tk.END,
+                f"ID:{o.order_id} | {o.status} | {o.fee}")
+
+        for s in self.service.shippers.values():
+            avg = round(sum(s.ratings)/len(s.ratings),2) if s.ratings else "N/A"
+            self.shipper_list.insert(tk.END,
+                f"ID:{s.shipper_id} | {s.name} | Rev:{s.total_revenue} | ⭐{avg}")
+
+        sorted_shippers = sorted(self.service.shippers.values(),
+                                 key=lambda x: x.total_revenue,
+                                 reverse=True)
+
+        rank_text = ""
+        for i, s in enumerate(sorted_shippers[:5], start=1):
+            rank_text += f"{i}. {s.name} - {s.total_revenue}\n"
+
+        self.rank_label.config(text=rank_text if rank_text else "No data")
+
+        total_orders = len(self.service.orders)
+        total_km = sum(o.distance for o in self.service.orders.values())
+
+        for widget in self.total_orders_box.winfo_children():
+            widget.destroy()
+        tk.Label(self.total_orders_box, text=str(total_orders), font=("Arial", 16)).pack()
+
+        for widget in self.total_km_box.winfo_children():
+            widget.destroy()
+        tk.Label(self.total_km_box, text=str(total_km), font=("Arial", 16)).pack()
+
+        ratings_text = ""
+        for s in self.service.shippers.values():
+            if s.ratings:
+                avg = round(sum(s.ratings)/len(s.ratings),2)
+                ratings_text += f"{s.name}: {avg}\n"
+
+        self.feedback_label.config(text=ratings_text if ratings_text else "No ratings")
+
+    def add_shipper(self):
+        name = simpledialog.askstring("Input", "Shipper name:")
+        if name:
+            self.service.add_shipper(name)
+            self.refresh()
+
+    def create_order(self):
+        form = tk.Toplevel(self.root)
+        form.title("Create Order")
+        form.geometry("300x250")
+
+        tk.Label(form, text="Order Type").pack()
+        type_var = tk.StringVar(value="normal")
+        tk.OptionMenu(form, type_var, "normal", "express").pack()
+
+        tk.Label(form, text="Distance (km)").pack()
+        distance_entry = tk.Entry(form)
+        distance_entry.pack()
+
+        tk.Label(form, text="Weight (kg)").pack()
+        weight_entry = tk.Entry(form)
+        weight_entry.pack()
+
+        def submit():
             try:
-                order_id = int(input("ID order: "))
-                shipper_id = int(input("ID shipper: "))
-            except ValueError:
-                print("ID phải là số nguyên.")
-                continue
-            service.assign_shipper(order_id, shipper_id)
-            print(f"Đã gán shipper {shipper_id} cho order ID {order_id}")
+                type_name = type_var.get()
+                distance = float(distance_entry.get())
+                weight = float(weight_entry.get())
 
-        elif choice == "4":
+                order = self.service.create_order(type_name, distance, weight)
+
+                messagebox.showinfo("Success", f"Order {order.order_id} created!\nFee: {order.fee}")
+                form.destroy()
+                self.refresh()
+            except:
+                messagebox.showerror("Error", "Invalid input")
+
+        tk.Button(form, text="Create", command=submit).pack(pady=10)
+
+    def assign_shipper(self):
+        form = tk.Toplevel(self.root)
+        form.title("Assign Shipper")
+        form.geometry("300x200")
+
+        tk.Label(form, text="Order ID").pack()
+        order_entry = tk.Entry(form)
+        order_entry.pack()
+
+        tk.Label(form, text="Shipper ID").pack()
+        shipper_entry = tk.Entry(form)
+        shipper_entry.pack()
+
+        def submit():
             try:
-                order_id = int(input("ID order: "))
-            except ValueError:
-                print("ID phải là số nguyên.")
-                continue
-            rating_input = input("Đánh giá shipper (1-5, bỏ trống nếu không có): ")
-            rating = int(rating_input) if rating_input else None
-            service.complete_order(order_id, rating)
-            if order_id in service.orders and service.orders[order_id].status == "COMPLETED":
-                print(f"Order {order_id} đã hoàn thành")
+                order_id = int(order_entry.get())
+                shipper_id = int(shipper_entry.get())
 
-        elif choice == "5":
+                self.service.assign_shipper(order_id, shipper_id)
+                self.refresh()
+                form.destroy()
+            except:
+                messagebox.showerror("Error", "Invalid input")
+
+        tk.Button(form, text="Assign", command=submit).pack(pady=10)
+
+    def complete_order(self):
+        form = tk.Toplevel(self.root)
+        form.title("Complete Order")
+        form.geometry("300x200")
+
+        tk.Label(form, text="Order ID").pack()
+        order_entry = tk.Entry(form)
+        order_entry.pack()
+
+        tk.Label(form, text="Rating (1-5 optional)").pack()
+        rating_entry = tk.Entry(form)
+        rating_entry.pack()
+
+        def submit():
             try:
-                order_id = int(input("ID order: "))
-            except ValueError:
-                print("ID phải là số nguyên.")
-                continue
-            if order_id not in service.orders:
-                print("Order không tồn tại. Check again bro")
-            else:
-                filename = service.orders[order_id].export_invoice_txt()
-                print(f"Đã xuất hóa đơn: {filename}")
+                order_id = int(order_entry.get())
+                rating = rating_entry.get()
+                rating = int(rating) if rating else None
 
-        elif choice == "6":
-            service.save_json()
-            print("Đã lưu dữ liệu ra data.json")
+                self.service.complete_order(order_id, rating)
+                self.refresh()
+                form.destroy()
+            except:
+                messagebox.showerror("Error", "Invalid input")
 
-        elif choice == "7":
-            service.load_json()
-            print("Đã load dữ liệu từ data.json")
+        tk.Button(form, text="Complete", command=submit).pack(pady=10)
 
-        elif choice == "8":
-            if not service.orders:
-                print("Chưa có order nào.")
-            else:
-                print("Danh sách orders:")
-                for oid in sorted(service.orders.keys()):
-                    o = service.orders[oid]
-                    print(f"- ID {o.order_id} | Type: {o.__class__.__name__} | Status: {o.status} | Fee: {o.fee} | Shipper ID: {o.shipper_id} | Shipper Name: {o.shipper_name}")
+    def export_invoice(self):
+        try:
+            order_id = int(simpledialog.askstring("Order ID", "Enter order ID"))
+        except:
+            return
 
-        elif choice == "9":
-            if not service.shippers:
-                print("Chưa có shipper nào.")
-            else:
-                print("Danh sách shippers:")
-                for sid in sorted(service.shippers.keys()):
-                    s = service.shippers[sid]
-                    avg_rating = round(sum(s.ratings)/len(s.ratings), 2) if s.ratings else "N/A"
-                    print(f"- ID {s.shipper_id} | Name: {s.name} | Revenue: {s.total_revenue} | Completed: {s.completed_orders} | Đánh giá trung bình: {avg_rating}")
-
-        elif choice == "0":
-            print("Thoát chương trình.")
-            break
-
+        if order_id in self.service.orders:
+            filename = self.service.orders[order_id].export_invoice_txt()
+            messagebox.showinfo("Exported", f"Saved as {filename}")
         else:
-            print("Chức năng không hợp lệ, siuuuu")
+            messagebox.showerror("Error", "Order not found")
+
+    def save(self):
+        self.service.save_json()
+        messagebox.showinfo("Saved", "Data saved")
+
+    def load(self):
+        self.service.load_json()
+        self.refresh()
+        messagebox.showinfo("Loaded", "Data loaded")
+
 
 if __name__ == "__main__":
-    main()
+    root = tk.Tk()
+    app = DeliveryApp(root)
+    root.mainloop()
