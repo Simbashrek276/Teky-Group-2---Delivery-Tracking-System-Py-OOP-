@@ -317,6 +317,7 @@ class DeliveryService:
 
 #menu của mình nhé ae :))
 import tkinter as tk
+from tkinter import ttk
 from tkinter import messagebox, simpledialog
 
 class DeliveryApp:
@@ -403,8 +404,23 @@ class DeliveryApp:
         order_panel = tk.LabelFrame(right_main, text="Order")
         order_panel.pack(fill="both", expand=True, pady=10)
 
-        self.order_list = tk.Listbox(order_panel, font=("Arial", 11))
-        self.order_list.pack(fill="both", expand=True, padx=5, pady=5)
+        order_columns=("ID","Order state","Price")
+        Style=ttk.Style()
+        Style.theme_use("default")
+        self.order_tree=ttk.Treeview(order_panel,columns=order_columns,show="headings")
+        Style.configure("Treeview.Heading",font=("Arial", 11,"bold"),
+                bg="#34495e",
+                fg="white")
+        Style.map("Treeview.Heading",
+            background=[("!active", "#34495e")],
+            foreground=[("!active","white")])
+        self.order_tree.heading("ID",text="ID")
+        self.order_tree.heading("Order state",text="Order state")
+        self.order_tree.heading("Price",text="Price")
+        self.order_tree.column("ID", width=100, anchor="center",stretch=True)
+        self.order_tree.column("Order state", width=150, anchor="center",stretch=True)
+        self.order_tree.column("Price", width=100, anchor="center",stretch=True)
+        self.order_tree.pack(fill="both",expand=True,padx=5,pady=5)
 
         tk.Button(order_panel, text="+ Create", command=self.create_order).pack(fill="x")
         tk.Button(order_panel, text="Complete", command=self.complete_order).pack(fill="x")
@@ -414,12 +430,13 @@ class DeliveryApp:
 
     #đây sẽ là các hàm của nhóm mình 
     def refresh(self):
-        self.order_list.delete(0, tk.END)
+        for item in self.order_tree.get_children():
+            self.order_tree.delete(item)
         self.shipper_list.delete(0, tk.END)
 
         for o in self.service.orders.values():
-            self.order_list.insert(tk.END,
-                f"ID:{o.order_id} | {o.status} | {o.fee}")
+            self.order_tree.insert("", "end",
+                values=(o.order_id, o.status, o.fee))
 
         for s in self.service.shippers.values():
             avg = round(sum(s.ratings)/len(s.ratings),2) if s.ratings else "N/A"
