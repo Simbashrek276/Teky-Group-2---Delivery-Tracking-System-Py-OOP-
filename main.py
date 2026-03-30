@@ -416,7 +416,7 @@ class DeliveryApp:
             foreground=[("!active","white")])
         self.order_tree.heading("ID",text="ID")
         self.order_tree.heading("Order state",text="Order state")
-        self.order_tree.heading("Price",text="Price")
+        self.order_tree.heading("Price",text="Fee")
         self.order_tree.column("ID", width=100, anchor="center",stretch=True)
         self.order_tree.column("Order state", width=150, anchor="center",stretch=True)
         self.order_tree.column("Price", width=100, anchor="center",stretch=True)
