@@ -394,8 +394,25 @@ class DeliveryApp:
         shipper_panel = tk.LabelFrame(right_main, text="Shipper")
         shipper_panel.pack(fill="both", expand=True, pady=10)
 
-        self.shipper_list = tk.Listbox(shipper_panel, font=("Arial", 11))
-        self.shipper_list.pack(fill="both", expand=True, padx=5, pady=5)
+        Shipper_columns=("ID","Name","Revenue","Average stars")
+        Style=ttk.Style()
+        Style.theme_use("default")
+        self.shipper_tree=ttk.Treeview(shipper_panel,columns=Shipper_columns,show="headings",height=8)
+        Style.configure("Treeview.Heading",font=("Arial", 11,"bold"),
+                bg="#34495e",
+                fg="white")
+        Style.map("Treeview.Heading",
+            background=[("!active", "#34495e")],
+            foreground=[("!active","white")])
+        self.shipper_tree.heading("ID",text="ID")
+        self.shipper_tree.heading("Name",text="Shipper name")
+        self.shipper_tree.heading("Revenue",text="Total revenue")
+        self.shipper_tree.heading("Average stars",text="Average stars")
+        self.shipper_tree.column("ID", width=100, anchor="center",stretch=True)
+        self.shipper_tree.column("Name", width=150, anchor="center",stretch=True)
+        self.shipper_tree.column("Revenue", width=100, anchor="center",stretch=True)
+        self.shipper_tree.column("Average stars", width=100, anchor="center",stretch=True)
+        self.shipper_tree.pack(fill="both",expand=True,padx=5,pady=5)
 
         tk.Button(shipper_panel, text="+ Add", command=self.add_shipper).pack(fill="x")
         tk.Button(shipper_panel, text="Assign", command=self.assign_shipper).pack(fill="x")
@@ -407,7 +424,7 @@ class DeliveryApp:
         order_columns=("ID","Order state","Price")
         Style=ttk.Style()
         Style.theme_use("default")
-        self.order_tree=ttk.Treeview(order_panel,columns=order_columns,show="headings")
+        self.order_tree=ttk.Treeview(order_panel,columns=order_columns,show="headings",height=8)
         Style.configure("Treeview.Heading",font=("Arial", 11,"bold"),
                 bg="#34495e",
                 fg="white")
@@ -430,9 +447,8 @@ class DeliveryApp:
 
     #đây sẽ là các hàm của nhóm mình 
     def refresh(self):
-        for item in self.order_tree.get_children():
-            self.order_tree.delete(item)
-        self.shipper_list.delete(0, tk.END)
+        self.order_tree.delete(*self.order_tree.get_children())
+        self.shipper_tree.delete(*self.shipper_tree.get_children())
 
         for o in self.service.orders.values():
             self.order_tree.insert("", "end",
@@ -440,8 +456,8 @@ class DeliveryApp:
 
         for s in self.service.shippers.values():
             avg = round(sum(s.ratings)/len(s.ratings),2) if s.ratings else "N/A"
-            self.shipper_list.insert(tk.END,
-                f"ID:{s.shipper_id} | {s.name} | Rev:{s.total_revenue} | ⭐{avg}")
+            self.shipper_tree.insert("","end",
+                values=(s.shipper_id,s.name,s.total_revenue,f"⭐{avg}"))
 
         sorted_shippers = sorted(self.service.shippers.values(),
                                  key=lambda x: x.total_revenue,
