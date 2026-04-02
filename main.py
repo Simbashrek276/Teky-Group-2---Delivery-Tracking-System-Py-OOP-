@@ -343,8 +343,8 @@ class DeliveryApp:
                 fg="white"
             )
 
-        big_btn("Add Shipper", self.add_shipper).pack(fill="x", pady=5)
-        big_btn("Create Order", self.create_order).pack(fill="x", pady=5)
+        big_btn("Add shipper", self.add_shipper).pack(fill="x", pady=5)
+        big_btn("Create order", self.create_order).pack(fill="x", pady=5)
         big_btn("Assign", self.assign_shipper).pack(fill="x", pady=5)
         big_btn("Complete", self.complete_order).pack(fill="x", pady=5)
         big_btn("Export", self.export_invoice).pack(fill="x", pady=5)
@@ -358,6 +358,35 @@ class DeliveryApp:
         top_main = tk.Frame(main_frame, height=30, bg="white")
         top_main.pack(side="top", fill="x")
 
+        header_left = tk.Frame(top_main, bg="white")
+        header_left.pack(side="left", padx=10)
+
+        # nếu có file logo.png thì ae cho vào đay nhé (cái chỗ file="logo.png" y)
+        from PIL import Image, ImageTk
+        try:
+            img = Image.open("logo.png")
+
+            # thay doi size hinh anh o day :)) truoc dung pillow nhung ko dc vi no chi la integer ;-;
+            img = img.resize((100, 70))
+
+            self.logo_img = ImageTk.PhotoImage(img)
+
+            logo_label = tk.Label(header_left, image=self.logo_img, bg="white")
+            logo_label.pack(side="left", padx=5)
+
+        except:
+            logo_label = tk.Label(header_left, text="gen logo di", font=("Arial", 20), bg="white")
+            logo_label.pack(side="left", padx=10)
+
+        # ten cong ty la Vietship :)))
+        company_label = tk.Label(
+            header_left,
+            text="Vietship",
+            font=("Roboto", 19, "italic"),
+            bg="white"
+        )
+        company_label.pack(side="left", padx=0)
+
         left_main = tk.Frame(main_frame, bg="#ecf0f1")
         left_main.pack(side="left", fill="both", expand=True, padx=(10,5), pady=10)
 
@@ -367,7 +396,7 @@ class DeliveryApp:
 
         #khung chính (dashboard)
 
-        self.rank_box = tk.LabelFrame(left_main, text="Top Shippers")
+        self.rank_box = tk.LabelFrame(left_main, text="Leaderboard của 5 Shippers nhiều sao nhất")
         self.rank_box.pack(fill="x", pady=5)
 
         self.rank_label = tk.Label(self.rank_box, justify="left")
@@ -376,13 +405,13 @@ class DeliveryApp:
         stats_frame = tk.Frame(left_main)
         stats_frame.pack(fill="x")
 
-        self.total_orders_box = tk.LabelFrame(stats_frame, text="Total Orders")
+        self.total_orders_box = tk.LabelFrame(stats_frame, text="Total Orders (tổng đơn)")
         self.total_orders_box.pack(side="left", expand=True, fill="both", padx=5)
 
-        self.total_km_box = tk.LabelFrame(stats_frame, text="Total Distance")
+        self.total_km_box = tk.LabelFrame(stats_frame, text="Total Distance (km)")
         self.total_km_box.pack(side="left", expand=True, fill="both", padx=5)
 
-        self.feedback_box = tk.LabelFrame(left_main, text="Ratings")
+        self.feedback_box = tk.LabelFrame(left_main, text="Ratings (sao)")
         self.feedback_box.pack(fill="both", expand=True, pady=5)
 
         self.feedback_label = tk.Label(self.feedback_box, justify="left")
@@ -417,7 +446,7 @@ class DeliveryApp:
         tk.Button(shipper_panel, text="+ Add", command=self.add_shipper).pack(fill="x")
         tk.Button(shipper_panel, text="Assign", command=self.assign_shipper).pack(fill="x")
 
-        # ORDER PANEL
+        # phần order panel ae nhé
         order_panel = tk.LabelFrame(right_main, text="Order")
         order_panel.pack(fill="both", expand=True, pady=10)
 
@@ -467,7 +496,7 @@ class DeliveryApp:
         for i, s in enumerate(sorted_shippers[:5], start=1):
             rank_text += f"{i}. {s.name} - {s.total_revenue}\n"
 
-        self.rank_label.config(text=rank_text if rank_text else "No data")
+        self.rank_label.config(text=rank_text if rank_text else "No data - ko có ttin")
 
         total_orders = len(self.service.orders)
         total_km = sum(o.distance for o in self.service.orders.values())
@@ -486,7 +515,7 @@ class DeliveryApp:
                 avg = round(sum(s.ratings)/len(s.ratings),2)
                 ratings_text += f"{s.name}: {avg}\n"
 
-        self.feedback_label.config(text=ratings_text if ratings_text else "No ratings")
+        self.feedback_label.config(text=ratings_text if ratings_text else "chưa có rating")
 
     def add_shipper(self):
         name = simpledialog.askstring("Input", "Shipper name:")
